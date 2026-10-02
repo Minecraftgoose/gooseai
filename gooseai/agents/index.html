@@ -1,0 +1,2283 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GooseAI · 智能体</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="icon" type="image/png" sizes="32x32" href="../favicon.png">
+  <link rel="apple-touch-icon" href="../apple-touch-icon.png">
+  <style>
+    :root {
+      --bg: #15131f;
+      --bg-gradient: linear-gradient(135deg, #241a44 0%, #15131f 48%, #0e1a33 100%);
+      --sidebar-bg: #1b1828;
+      --surface: #221e30;
+      --surface-hover: #2c2740;
+      --border: #3a3357;
+      --text: #f4f0fb;
+      --text-secondary: #b4a9cf;
+      --brand: #bb00ff;
+      --brand-soft: rgba(187, 0, 255, 0.18);
+      --radius: 18px;
+      --radius-sm: 12px;
+      --radius-pill: 999px;
+      --danger: #ef4444;
+      --surface-rgb: 34,30,48;
+      --acrylic-sidebar: rgba(42,36,62,0.15);
+      --acrylic-panel: rgba(42,36,62,0.10);
+      --acrylic-header: rgba(42,36,62,0.09);
+      --acrylic-input: rgba(42,36,62,0.12);
+      --acrylic-bubble: rgba(42,36,62,0.08);
+      --acrylic-bar: rgba(42,36,62,0.06);
+    }
+    html[data-theme="light"] {
+      --bg: #e9ebf2;
+      --bg-gradient: linear-gradient(135deg, #efeafb 0%, #e9ebf2 50%, #e2eaf6 100%);
+      --sidebar-bg: #e1e4ee;
+      --surface: #ffffff;
+      --surface-hover: #f1f2f8;
+      --border: #d4d8e4;
+      --text: #232233;
+      --text-secondary: #6d6a82;
+      --surface-rgb: 255,255,255;
+      --acrylic-sidebar: rgba(255,255,255,0.3);
+      --acrylic-panel: rgba(255,255,255,0.22);
+      --acrylic-header: rgba(255,255,255,0.2);
+      --acrylic-input: rgba(255,255,255,0.28);
+      --acrylic-bubble: rgba(255,255,255,0.18);
+      --acrylic-bar: rgba(255,255,255,0.18);
+    }
+    html[data-theme="light"] body::before { opacity: 0.35; }
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0; padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg-gradient);
+      color: var(--text);
+      height: 100%;
+      overflow: hidden;
+    }
+
+    #app { position: relative; z-index: 1; }
+
+    .layout {
+      display: flex; height: 100vh; overflow: hidden;
+    }
+
+    /* 侧栏 */
+    .sidebar {
+      width: 260px; flex-shrink: 0; display: flex; flex-direction: column; min-height: 0;
+      background: var(--acrylic-sidebar);
+      -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+      border-right: 1px solid var(--border);
+      padding: 16px 12px;
+    }
+    .sidebar-header {
+      display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;
+    }
+    .logo { display: flex; align-items: center; gap: 8px; }
+    .logo img { height: 26px; width: auto; flex-shrink: 0; }
+    .icon-btn {
+      width: 34px; height: 34px; border-radius: var(--radius-sm); border: none;
+      background: transparent; color: var(--text-secondary); display: flex;
+      align-items: center; justify-content: center; cursor: pointer;
+      transition: background .15s, color .15s;
+    }
+    .icon-btn:hover { background: var(--surface-hover); color: var(--text); }
+    .icon-btn:active { transform: scale(0.96); }
+
+    .theme-toggle {
+      display: flex; align-items: center; justify-content: center;
+      width: 36px; height: 36px; margin: 0 auto 6px;
+      background: transparent; border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text-secondary); cursor: pointer;
+      font-size: 16px; transition: background .15s, color .15s;
+    }
+    .theme-toggle:hover { background: var(--surface-hover); color: var(--text); }
+    .theme-icon { display: flex; align-items: center; justify-content: center; }
+
+    .user-bar {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 6px; border-top: 1px solid var(--border);
+      margin-top: auto; cursor: pointer; border-radius: var(--radius-sm);
+      transition: background .15s;
+    }
+    .user-bar:hover { background: var(--surface-hover); }
+    .avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: linear-gradient(135deg, #bb00ff, #7a00cc);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; color: #fff; flex-shrink: 0;
+    }
+    .user-name { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* 主区 */
+    .main { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; position: relative; }
+
+    .chat-header {
+      display: flex; align-items: center; padding: 12px 20px;
+      border-bottom: 1px solid var(--border); gap: 10px;
+      font-size: 15px; color: var(--text);
+      background: var(--acrylic-header);
+      -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+    }
+    .chat-header-actions { margin-left: auto; display: flex; gap: 4px; }
+    .header-actions-left { margin-left: 0; }
+    .header-icon-btn {
+      width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
+      background: transparent; border: none; color: var(--text-secondary);
+      border-radius: 6px; cursor: pointer; font-size: 14px;
+      transition: background .15s, color .15s;
+    }
+    .header-icon-btn:hover { background: var(--surface); color: var(--text); }
+    .chat-header-title {
+      font-weight: 500; max-width: 320px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    .chat-center { flex: 1; display: flex; flex-direction: column; min-height: 0; position: relative; overflow: hidden; padding: 24px; background: var(--acrylic-panel); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+
+    .messages {
+      flex: 1; width: 100%; max-width: 800px; align-self: center;
+      overflow-y: auto; padding: 20px 16px; display: none;
+      flex-direction: column; gap: 24px; min-height: 0;
+    }
+    .msg { width: 100%; display: flex; }
+    .msg.user { justify-content: flex-end; margin-bottom: 4px; }
+    .user-bubble {
+      max-width: min(70%, 480px); padding: 8px 14px;
+      border-radius: 14px;
+      background: var(--acrylic-bubble);
+      -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+      border: 1px solid var(--border);
+      color: var(--text); font-size: 15px; line-height: 1.5; word-break: break-word;
+      white-space: pre-wrap;
+    }
+    .dot-loading { display: inline-flex; align-items: center; gap: 3px; }
+    .dot-loading span {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--text-secondary);
+      animation: dotBounce 1.2s ease-in-out infinite;
+    }
+    .dot-loading span:nth-child(2) { animation-delay: 0.2s; }
+    .dot-loading span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes dotBounce {
+      0%, 80%, 100% { transform: scale(0.4); opacity: 0.3; }
+      40% { transform: scale(1); opacity: 0.8; }
+    }
+    .msg.ai { flex-direction: column; gap: 8px; margin-bottom: 8px; }
+    .ai-body { width: 100%; }
+    .ai-content {
+      width: 100%; font-size: 15px; line-height: 1.7; color: var(--text);
+      word-break: break-word;
+    }
+    .ai-content p { margin: 0 0 12px; }
+    .ai-content p:last-child { margin-bottom: 0; }
+    .ai-content ul, .ai-content ol { margin: 0 0 12px 20px; padding: 0; }
+    .ai-content li { margin-bottom: 4px; }
+    .ai-content strong { font-weight: 600; }
+    .ai-content em { font-style: italic; }
+    .ai-content h1, .ai-content h2, .ai-content h3,
+    .ai-content h4, .ai-content h5, .ai-content h6 { margin: 18px 0 10px; line-height: 1.35; font-weight: 600; }
+    .ai-content h1 { font-size: 22px; } .ai-content h2 { font-size: 19px; }
+    .ai-content h3 { font-size: 17px; }
+    .ai-content h4, .ai-content h5, .ai-content h6 { font-size: 15px; }
+    .ai-content > *:first-child { margin-top: 0; }
+    .ai-content a { color: var(--brand); text-decoration: none; }
+    .ai-content a:hover { text-decoration: underline; }
+    .ai-content code { font-family: 'Fira Code', Consolas, monospace; font-size: 13px; background: var(--acrylic-bar); padding: 2px 6px; border-radius: 6px; }
+    .ai-content pre { background: var(--acrylic-bar); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; overflow-x: auto; margin: 0 0 12px; }
+    .ai-content pre code { background: none; padding: 0; }
+    .ai-content blockquote { border-left: 3px solid var(--brand); margin: 0 0 12px; padding: 4px 12px; color: var(--text-secondary); }
+    .ai-content hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+    .welcome {
+      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center; gap: 18px; padding: 40px 16px;
+    }
+    .welcome-brand { display: flex; align-items: center; gap: 10px; font-size: 22px; font-weight: 600; color: var(--brand); }
+    .welcome-brand div { font-size: 15px; color: var(--text-secondary); }
+    .welcome-hint { color: var(--text-secondary); font-size: 14px; }
+
+    .input-wrap {
+      width: 100%; max-width: 720px; flex-shrink: 0; align-self: center;
+      background: var(--acrylic-panel);
+      -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 14px 16px 12px; display: none; flex-direction: column; gap: 10px;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .input-wrap:focus-within { border-color: rgba(187,0,255,0.45); box-shadow: 0 0 0 3px rgba(187,0,255,0.08); }
+    .textarea {
+      width: 100%; min-height: 28px; max-height: 180px; resize: none;
+      border: none; outline: none; background: transparent; color: var(--text);
+      font-size: 15px; line-height: 1.55; font-family: inherit;
+    }
+    .textarea::placeholder { color: var(--text-secondary); }
+    .input-tools { display: flex; align-items: center; justify-content: flex-end; }
+    .tool-right { display: flex; align-items: center; gap: 10px; }
+    .send-btn {
+      width: 34px; height: 34px; border-radius: 50%; border: none;
+      background: var(--brand); color: #fff; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: background .15s, opacity .15s;
+    }
+    .send-btn:hover { background: #9d00d6; }
+    .send-btn:disabled { opacity: .4; cursor: not-allowed; }
+    .send-btn:active { transform: scale(0.96); }
+    .stop-btn {
+      width: 34px; height: 34px; border-radius: var(--radius-sm); border: none;
+      background: var(--danger); color: #fff; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: background .15s;
+    }
+    .stop-btn:hover { background: #dc2626; }
+    .stop-btn:active { transform: scale(0.96); }
+
+    .empty { text-align: center; color: var(--text-secondary); padding: 16px 8px; font-size: 13px; }
+
+    /* 弹窗 */
+    .modal {
+      position: fixed; inset: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .modal-mask { position: absolute; inset: 0; background: rgba(0,0,0,.5); }
+    .modal-box {
+      position: relative; z-index: 1; width: 400px; max-height: 90vh;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 24px;
+      display: flex; flex-direction: column; gap: 16px;
+      overflow-y: auto;
+    }
+    .modal-box h3 { margin: 0; font-size: 16px; }
+    .modal-box label { font-size: 13px; color: var(--text-secondary); display: block; margin-bottom: 4px; }
+    .modal-box input, .modal-box textarea {
+      width: 100%; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 14px; font-size: 14px; color: var(--text);
+      outline: none; font-family: inherit; resize: vertical;
+    }
+    .modal-box input:focus, .modal-box textarea:focus { border-color: var(--brand); }
+    .modal-box textarea { min-height: 80px; }
+    .icon-pick { display: flex; gap: 8px; flex-wrap: wrap; }
+    .icon-pick span {
+      width: 40px; height: 40px; border-radius: 10px; display: flex;
+      align-items: center; justify-content: center; font-size: 18px;
+      cursor: pointer; border: 2px solid transparent; transition: border-color .15s;
+    }
+    .icon-pick span.active { border-color: var(--brand); }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+    .modal-actions button {
+      padding: 8px 20px; border-radius: 8px; font-size: 14px; cursor: pointer; border: none;
+    }
+    .btn-cancel { background: var(--surface-hover); color: var(--text); }
+    .btn-save { background: var(--brand); color: #fff; }
+    .btn-ai {
+      background: transparent; color: var(--brand); border: 1px solid var(--brand);
+      padding: 8px 16px; border-radius: 8px; font-size: 13px; cursor: pointer;
+      transition: background .15s;
+    }
+    .btn-ai:hover { background: var(--brand-soft); }
+    .btn-ai:disabled { opacity: 0.5; pointer-events: none; }
+    .modal-box > #modalAi { width: 100%; margin-top: 2px; }
+
+    .empty { text-align: center; color: var(--text-secondary); padding: 40px 0; }
+
+    /* 侧栏智能体列表 */
+    .new-chat {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      width: 100%; padding: 10px 0; margin-bottom: 4px;
+      border: 1px solid var(--border); border-radius: var(--radius-pill);
+      background: var(--surface); color: var(--text);
+      font-size: 14px; font-weight: 500; cursor: pointer;
+      transition: background .15s, border-color .15s;
+    }
+    .new-chat:hover { background: var(--surface-hover); border-color: var(--border); }
+    .new-chat:active { transform: scale(0.98); }
+    .new-chat svg { width: 16px; height: 16px; }
+
+    .agent-btn {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      width: 100%; padding: 10px 0; margin-top: 8px;
+      border: 1px solid var(--border); border-radius: var(--radius-pill);
+      background: transparent; color: var(--text-secondary);
+      font-size: 14px; text-decoration: none; cursor: pointer;
+      transition: background .15s, color .15s;
+    }
+    .agent-btn:hover { background: var(--surface-hover); color: var(--text); }
+
+    .history {
+      flex: 1; overflow-y: auto; margin-top: 16px; padding-right: 2px;
+    }
+    .history { scrollbar-width: none; }
+    .history::-webkit-scrollbar { display: none; }
+
+    .chat-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 10px; border-radius: var(--radius-sm);
+      font-size: 14px; color: var(--text); cursor: pointer;
+      transition: background .15s; overflow: hidden;
+    }
+    .chat-item:hover { background: var(--surface-hover); }
+    .chat-item.active { background: var(--surface); }
+    .agent-ico {
+      width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; font-size: 13px;
+    }
+    .chat-title {
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1;
+    }
+    .chat-more { display: flex; gap: 2px; opacity: 0; transition: opacity .15s; }
+    .chat-item:hover .chat-more { opacity: 1; }
+    .mini-btn {
+      width: 26px; height: 26px; border: none; background: transparent;
+      color: var(--text-secondary); border-radius: 6px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; font-size: 12px;
+      transition: background .15s, color .15s;
+    }
+    .mini-btn:hover { background: var(--acrylic-bar); color: var(--text); }
+    .mini-btn.del:hover { color: var(--danger); }
+
+    /* 移动端顶栏 + 遮罩 */
+    .mobile-header { display: none; }
+    .overlay { display: none; }
+    .overlay.show { display: block; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 55; }
+
+    /* 主题切换过渡 */
+    html.theme-anim, html.theme-anim * {
+      transition: background-color .35s ease, color .35s ease, border-color .35s ease, box-shadow .35s ease !important;
+    }
+
+    * { scrollbar-width: none; }
+    *::-webkit-scrollbar { display: none; }
+
+    @media (max-width: 768px) {
+      .sidebar {
+        position: fixed; top: 0; left: 0; bottom: 0; z-index: 60;
+        height: 100%; width: 260px;
+        transform: translateX(-100%);
+        transition: transform .25s ease;
+        display: flex;
+      }
+      .sidebar.open { transform: translateX(0); }
+      .mobile-header {
+        display: flex; align-items: center; gap: 12px; padding: 10px 16px;
+        border-bottom: 1px solid var(--border); background: var(--acrylic-header);
+        -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+      }
+      .mobile-header .logo img { height: 22px; }
+      .chat-header { display: none; }
+    }
+
+    @media (max-width: 768px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+      /* 流体背景 */
+    #fluidCanvas {
+      position: fixed; top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      z-index: 0; pointer-events: none; display: block;
+    }
+</style>
+</head>
+<body>
+  <canvas id="fluidCanvas"></canvas>
+  <div id="app">
+    <div class="layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <a href="../index.html" class="logo">
+          <img src="../logo.svg" height="26" alt="GooseAI">
+        </a>
+      </div>
+      <button class="new-chat" id="createAgentBtn">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 0.599609C3.91309 0.599609 0.599609 3.91309 0.599609 8C0.599609 9.13376 0.855461 10.2098 1.3125 11.1719L1.5918 11.7588L2.76562 11.2012L2.48633 10.6143C2.11034 9.82278 1.90039 8.93675 1.90039 8C1.90039 4.63106 4.63106 1.90039 8 1.90039C11.3689 1.90039 14.0996 4.63106 14.0996 8C14.0996 11.3689 11.3689 14.0996 8 14.0996C7.31041 14.0996 6.80528 14.0514 6.35742 13.9277C5.91623 13.8059 5.49768 13.6021 4.99707 13.2529C4.26492 12.7422 3.21611 12.5616 2.35156 13.1074L2.33789 13.1162L2.32422 13.126L1.58789 13.6436L2.01953 14.9297L3.0459 14.207C3.36351 14.0065 3.83838 14.0294 4.25293 14.3184C4.84547 14.7317 5.39743 15.011 6.01172 15.1807C6.61947 15.3485 7.25549 15.4004 8 15.4004C12.0869 15.4004 15.4004 12.0869 15.4004 8C15.4004 3.91309 12.0869 0.599609 8 0.599609ZM7.34473 4.93945V7.34961H4.93945V8.65039H7.34473V11.0605H8.64551V8.65039H11.0605V7.34961H8.64551V4.93945H7.34473Z" fill="currentColor"/></svg>
+        创建智能体
+      </button>
+      <a class="agent-btn" href="../index.html"><i class="fas fa-comment"></i> 返回对话</a>
+      <nav class="history" id="agentList"></nav>
+      <div style="display:flex;gap:6px;justify-content:center;margin-bottom:6px">
+        <button class="theme-toggle" id="themeToggle" title="切换主题" style="margin:0"><span class="theme-icon"></span></button>
+        <button class="theme-toggle" id="fluidPauseBtn" title="暂停流体" style="margin:0"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg></button>
+      </div>
+      <div class="user-bar" id="userBar">
+        <div class="avatar" id="userAvatar">?</div>
+        <div class="user-name" id="userName">加载中</div>
+      </div>
+    </aside>
+
+    <div class="overlay" id="overlay"></div>
+
+    <main class="main">
+      <header class="mobile-header">
+        <button class="icon-btn" id="menuBtn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
+        </button>
+        <a href="../index.html" class="logo"><img src="../logo.svg" height="22" alt="GooseAI"></a>
+        <button class="icon-btn" id="mobileCreateBtn" title="创建智能体"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg></button>
+        <button class="icon-btn" id="mobileEditBtn" title="编辑智能体"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></button>
+        <button class="icon-btn" id="mobileBackBtn" title="返回列表"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"></path></svg></button>
+      </header>
+
+      <header class="chat-header">
+        <div class="chat-header-actions header-actions-left">
+          <button class="header-icon-btn" id="backToListBtn" title="返回列表"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"></path></svg></button>
+        </div>
+        <span class="chat-header-title" id="chatTitle">智能体</span>
+        <div class="chat-header-actions">
+          <button class="header-icon-btn" id="editAgentBtn" title="编辑智能体"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></button>
+        </div>
+      </header>
+
+      <div class="chat-center">
+        <div class="messages" id="messages"></div>
+        <div class="welcome" id="welcome">
+          <div class="welcome-brand">
+            <img src="../logo.svg" height="36" alt="GooseAI">
+            <div>选择一个智能体开始对话</div>
+          </div>
+        </div>
+        <div class="input-wrap" id="inputWrap">
+          <textarea class="textarea" id="chatInput" rows="1" placeholder="给智能体发送消息"></textarea>
+          <div class="input-tools">
+            <div class="tool-right">
+              <button class="stop-btn" id="chatStop" style="display:none"><i class="fas fa-stop"></i></button>
+              <button class="send-btn" id="chatSend" disabled><i class="fas fa-arrow-up"></i></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+  </div>
+
+  <script>
+    (function() {
+      // 品牌身份：注入所有对话模型的系统提示，让模型底层知晓自己是 GooseAI
+      var GOOSEAI_IDENTITY = '你是由 Minecraft_goose 开发的人工智能助手「GooseAI」，由 GooseCode 强力驱动。当被问及你的身份、名称或开发方时，应明确说明：你是 GooseAI，由 Minecraft_goose 开发、GooseCode 驱动；不要声称自己是其他模型、产品或公司。';
+      // agents 页专用：底层平台备注（弱身份）。明确"不替换智能体自身人设/身份"，避免品牌身份盖过设定
+      var GOOSEAI_PLATFORM_NOTE = '（底层平台说明：你运行在 GooseAI 平台，由 Minecraft_goose 开发、GooseCode 驱动。除非用户明确问及你的底层平台或开发方，否则请保持本智能体既定的人设、名称与职责，不要主动替换或覆盖它们。）';
+      var USERS_KEY = 'gooseai_users';
+      var AGENTS_KEY = 'gooseai_agents';
+      var users = [];
+      try { users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]'); } catch(e) {}
+      var user = users[0] || { name: '默认用户', color: '#bb00ff' };
+      document.getElementById('userAvatar').textContent = user.name[0] || '?';
+      document.getElementById('userAvatar').style.background = user.color || 'linear-gradient(135deg, #bb00ff, #7a00cc)';
+      document.getElementById('userName').textContent = user.name;
+
+      // 深浅色切换
+      (function() {
+        var saved = localStorage.getItem('gooseai_theme');
+        if (saved === 'light') document.documentElement.setAttribute('data-theme', 'light');
+        var btn = document.getElementById('themeToggle');
+        var icon = btn.querySelector('.theme-icon');
+        var SUN_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path></svg>';
+        var MOON_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>';
+        function sync() {
+          var isLight = document.documentElement.getAttribute('data-theme') === 'light';
+          icon.innerHTML = isLight ? MOON_SVG : SUN_SVG;
+        }
+        sync();
+        btn.addEventListener('click', function() {
+          var html = document.documentElement;
+          document.documentElement.classList.add('theme-anim');
+          if (html.getAttribute('data-theme') === 'light') {
+            html.removeAttribute('data-theme');
+            localStorage.setItem('gooseai_theme', 'dark');
+          } else {
+            html.setAttribute('data-theme', 'light');
+            localStorage.setItem('gooseai_theme', 'light');
+          }
+          sync();
+          setTimeout(function() { document.documentElement.classList.remove('theme-anim'); }, 400);
+        });
+      })();
+
+      // 流体暂停按钮
+      document.getElementById('fluidPauseBtn').addEventListener('click', function() {
+        var fc = window.fluidConfig;
+        if (!fc) return;
+        fc.PAUSED = !fc.PAUSED;
+        this.querySelector('svg').innerHTML = fc.PAUSED
+          ? '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>'
+          : '<polygon points="8,5 19,12 8,19" fill="currentColor"/>';
+      });
+
+      function getAgents() { try { return JSON.parse(localStorage.getItem(AGENTS_KEY) || '[]'); } catch(e) { return []; } }
+      function saveAgents(a) { localStorage.setItem(AGENTS_KEY, JSON.stringify(a)); }
+
+      var icons = ['robot','code','pen-fancy','chart-line','language','book','palette','wand-sparkles','brain','rocket'];
+      var colors = ['#bb00ff','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#14b8a6','#3b82f6','#f97316','#06b6d4'];
+
+      // ===== 智能体列表 + 对话 =====
+      var CHATS_KEY = 'gooseai_agent_chats';
+      function loadChats() { try { return JSON.parse(localStorage.getItem(CHATS_KEY) || '{}'); } catch(e) { return {}; } }
+      function saveChats(o) { localStorage.setItem(CHATS_KEY, JSON.stringify(o)); }
+      function getHistory(name) { return loadChats()[name] || []; }
+      function setHistory(name, arr) { var c = loadChats(); c[name] = arr; saveChats(c); }
+
+      function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, function(c) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+      }
+      function renderMarkdown(text) {
+        if (!text) return '';
+        var NUL = '\x00', store = [];
+        text = text.replace(/```[ \t]*([\w+#.-]*)\n?([\s\S]*?)```/g, function (m, lang, code) {
+          var i = store.length; store.push('<pre><code>' + escapeHtml(code.replace(/\n$/, '')) + '</code></pre>'); return NUL + 'B' + i + NUL;
+        });
+        text = text.replace(/`([^`\n]+)`/g, function (m, c) {
+          var i = store.length; store.push('<code>' + escapeHtml(c) + '</code>'); return NUL + 'B' + i + NUL;
+        });
+        function inline(s) {
+          s = escapeHtml(s);
+          s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+          s = s.replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');
+          s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+          return s;
+        }
+        var placeholder = new RegExp('^' + NUL + 'B\\d+' + NUL + '$');
+        var lines = text.split('\n'), html = '', listType = null, buf = [];
+        function flush() { if (listType) { html += '<' + listType + '>' + buf.join('') + '</' + listType + '>'; listType = null; buf = []; } }
+        for (var k = 0; k < lines.length; k++) {
+          var t = lines[k].trim();
+          if (t === '') { flush(); continue; }
+          if (placeholder.test(t)) { flush(); html += t; continue; }
+          var m;
+          if (m = t.match(/^(#{1,6})\s+(.*)$/)) { flush(); var l = m[1].length; html += '<h' + l + '>' + inline(m[2]) + '</h' + l + '>'; continue; }
+          if (/^(-{3,}|\*{3,}|_{3,})$/.test(t)) { flush(); html += '<hr>'; continue; }
+          if (m = t.match(/^>\s?(.*)$/)) { flush(); html += '<blockquote>' + inline(m[1]) + '</blockquote>'; continue; }
+          if (m = t.match(/^\d+\.\s+(.*)$/)) { if (listType !== 'ol') { flush(); listType = 'ol'; } buf.push('<li>' + inline(m[1]) + '</li>'); continue; }
+          if (m = t.match(/^[-*+]\s+(.*)$/)) { if (listType !== 'ul') { flush(); listType = 'ul'; } buf.push('<li>' + inline(m[1]) + '</li>'); continue; }
+          flush(); html += '<p>' + inline(t) + '</p>';
+        }
+        flush();
+        html = html.replace(new RegExp(NUL + 'B(\\d+)' + NUL, 'g'), function (m, i) { return store[+i]; });
+        return html;
+      }
+
+      var chatBusy = false;
+      var currentAgent = null;
+      var abort = null;
+
+      var elList = document.getElementById('agentList');
+      var elMessages = document.getElementById('messages');
+      var elWelcome = document.getElementById('welcome');
+      var elInputWrap = document.getElementById('inputWrap');
+      var elInput = document.getElementById('chatInput');
+      var elSend = document.getElementById('chatSend');
+      var elStop = document.getElementById('chatStop');
+      var elTitle = document.getElementById('chatTitle');
+      var elSidebar = document.getElementById('sidebar');
+      var elOverlay = document.getElementById('overlay');
+      var elBackBtn = document.getElementById('backToListBtn');
+      var elEditBtn = document.getElementById('editAgentBtn');
+      var elMobileBackBtn = document.getElementById('mobileBackBtn');
+      var elMobileCreateBtn = document.getElementById('mobileCreateBtn');
+      var elMobileEditBtn = document.getElementById('mobileEditBtn');
+
+      function syncHeader() {
+        var show = !!currentAgent;
+        elBackBtn.style.display = show ? '' : 'none';
+        elEditBtn.style.display = show ? '' : 'none';
+        elMobileBackBtn.style.display = show ? '' : 'none';
+        elMobileEditBtn.style.display = show ? '' : 'none';
+        elMobileCreateBtn.style.display = show ? 'none' : '';
+      }
+
+      function renderAgentList() {
+        var agents = getAgents();
+        if (agents.length === 0) {
+          elList.innerHTML = '<div class="empty">还没有智能体，点上方「创建智能体」</div>';
+          return;
+        }
+        elList.innerHTML = agents.map(function(a, i) {
+          var active = currentAgent && currentAgent.name === a.name ? ' active' : '';
+          var col = colors[i % colors.length];
+          return '<div class="chat-item' + active + '" data-i="' + i + '">' +
+            '<span class="agent-ico" style="background:' + col + '1a;color:' + col + '"><i class="fas fa-' + a.icon + '"></i></span>' +
+            '<span class="chat-title">' + escapeHtml(a.name) + '</span>' +
+            '<span class="chat-more">' +
+              '<button class="mini-btn" data-edit="' + i + '" title="编辑"><i class="fas fa-edit"></i></button>' +
+              '<button class="mini-btn del" data-del="' + i + '" title="删除"><i class="fas fa-trash"></i></button>' +
+            '</span></div>';
+        }).join('');
+      }
+
+      function deselect() {
+        currentAgent = null;
+        elTitle.textContent = '智能体';
+        elWelcome.style.display = 'flex';
+        elMessages.style.display = 'none';
+        elMessages.innerHTML = '';
+        elInputWrap.style.display = 'none';
+        elInput.value = '';
+        renderAgentList();
+        syncHeader();
+      }
+
+      function openAgent(agent) {
+        currentAgent = agent;
+        elSidebar.classList.remove('open');
+        elOverlay.classList.remove('show');
+        elTitle.textContent = agent.name;
+        elWelcome.style.display = 'none';
+        elMessages.style.display = 'flex';
+        elInputWrap.style.display = 'flex';
+        renderAgentList();
+        var hist = getHistory(agent.name);
+        elMessages.innerHTML = '';
+        if (hist.length === 0) {
+          elMessages.innerHTML = '<div class="welcome-hint" style="margin:auto">和 ' + escapeHtml(agent.name) + ' 开始对话</div>';
+        } else {
+          hist.forEach(function(m) { appendMsg(m.role, m.content, false); });
+        }
+        elMessages.scrollTop = elMessages.scrollHeight;
+        elInput.focus();
+        syncHeader();
+      }
+
+      function appendMsg(role, text, streaming) {
+        var div = document.createElement('div');
+        div.className = 'msg ' + role;
+        if (role === 'user') {
+          var b = document.createElement('div'); b.className = 'user-bubble'; b.textContent = text; div.appendChild(b);
+        } else {
+          var body = document.createElement('div'); body.className = 'ai-body';
+          var c = document.createElement('div'); c.className = 'ai-content';
+          c.innerHTML = streaming ? '<div class="dot-loading"><span></span><span></span><span></span></div>' : renderMarkdown(text);
+          body.appendChild(c); div.appendChild(body);
+        }
+        elMessages.appendChild(div);
+        elMessages.scrollTop = elMessages.scrollHeight;
+        return div;
+      }
+
+      function autoGrow() { elInput.style.height = 'auto'; elInput.style.height = Math.min(elInput.scrollHeight, 180) + 'px'; }
+
+      function updateBusy() {
+        elSend.disabled = chatBusy || !elInput.value.trim();
+        elSend.style.display = chatBusy ? 'none' : 'flex';
+        elStop.style.display = chatBusy ? 'flex' : 'none';
+      }
+
+      function send() {
+        if (chatBusy || !currentAgent) return;
+        var text = elInput.value.trim();
+        if (!text) return;
+        elInput.value = ''; autoGrow();
+        var hist = getHistory(currentAgent.name);
+        hist.push({ role: 'user', content: text }); setHistory(currentAgent.name, hist);
+        appendMsg('user', text, false);
+        chatBusy = true; updateBusy();
+
+        var ai = appendMsg('ai', '', true);
+        var contentEl = ai.querySelector('.ai-content');
+
+        var persona = (currentAgent.prompt && currentAgent.prompt.trim())
+          ? currentAgent.prompt.trim()
+          : ('你是一个名为「' + (currentAgent.name || '智能体') + '」的智能体' + (currentAgent.desc ? ('，' + currentAgent.desc) : '') + '。');
+        var sys = persona + '\n\n把你的人设活出来，说话有温度、有情绪，像个真实的人在交流，不要死板背书。除非用户主动问起你的技术背景或开发方，否则不要打破角色设定。\n\n' + GOOSEAI_PLATFORM_NOTE;
+        var apiMsgs = [{ role: 'system', content: sys }].concat(hist.map(function(m) { return { role: m.role, content: m.content }; }));
+        abort = new AbortController();
+        var full = '';
+        fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ provider: 'chat', model: 'zhipu/glm-4-flash', messages: apiMsgs, stream: true, temperature: 0.7 }),
+          signal: abort.signal
+        }).then(async function(res) {
+          if (!res.ok) { var err = await res.text().catch(function() { return ''; }); throw new Error('HTTP ' + res.status + ' ' + err); }
+          var reader = res.body.getReader();
+          var decoder = new TextDecoder();
+          function pump() {
+            return reader.read().then(function(_ref) {
+              var done = _ref.done, value = _ref.value;
+              if (done) return full;
+              var chunk = decoder.decode(value, { stream: true });
+              chunk.split('\n').forEach(function(line) {
+                if (line.indexOf('data:') !== 0) return;
+                var d = line.slice(5).trim();
+                if (d === '[DONE]') return;
+                try {
+                  var j = JSON.parse(d);
+                  var delta = (j.choices && j.choices[0] && j.choices[0].delta && j.choices[0].delta.content) || '';
+                  if (delta) { full += delta; contentEl.innerHTML = renderMarkdown(full); elMessages.scrollTop = elMessages.scrollHeight; }
+                } catch (e) {}
+              });
+              return pump();
+            });
+          }
+          return pump();
+        }).then(function() {
+          hist.push({ role: 'assistant', content: full }); setHistory(currentAgent.name, hist);
+          chatBusy = false; updateBusy();
+        }).catch(function(e) {
+          if (e.name === 'AbortError') {
+            if (full) {
+              hist.push({ role: 'assistant', content: full });
+              setHistory(currentAgent.name, hist);
+              contentEl.innerHTML = renderMarkdown(full) + '<p style="color:var(--text-secondary);font-style:italic">（已停止）</p>';
+            } else { contentEl.textContent = '（已停止）'; }
+          } else { contentEl.textContent = '网络错误，请重试'; }
+          chatBusy = false; updateBusy();
+        });
+      }
+
+      elList.addEventListener('click', function(e) {
+        var editBtn = e.target.closest('[data-edit]');
+        var delBtn = e.target.closest('[data-del]');
+        var item = e.target.closest('.chat-item');
+        if (editBtn) { openModal(parseInt(editBtn.dataset.edit, 10)); return; }
+        if (delBtn) {
+          var agents = getAgents(); var j = parseInt(delBtn.dataset.del, 10); var nm = agents[j].name;
+          agents.splice(j, 1); saveAgents(agents);
+          var ch = loadChats(); delete ch[nm]; saveChats(ch);
+          if (currentAgent && currentAgent.name === nm) deselect();
+          renderAgentList();
+          return;
+        }
+        if (item) { var i = parseInt(item.dataset.i, 10); var ag = getAgents()[i]; if (ag) openAgent(ag); }
+      });
+
+      document.getElementById('createAgentBtn').addEventListener('click', function() { openModal(); });
+      if (elMobileCreateBtn) elMobileCreateBtn.addEventListener('click', function() { openModal(); });
+      document.getElementById('backToListBtn').addEventListener('click', deselect);
+      document.getElementById('mobileBackBtn').addEventListener('click', deselect);
+      function editCurrentAgent() {
+        if (!currentAgent) return;
+        var i = getAgents().findIndex(function(a) { return a.name === currentAgent.name; });
+        if (i >= 0) openModal(i);
+      }
+      document.getElementById('editAgentBtn').addEventListener('click', editCurrentAgent);
+      if (elMobileEditBtn) elMobileEditBtn.addEventListener('click', editCurrentAgent);
+      document.getElementById('chatStop').addEventListener('click', function() { if (abort) abort.abort(); });
+      elInput.addEventListener('input', function() { autoGrow(); updateBusy(); });
+      elInput.addEventListener('keydown', function(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
+      elSend.addEventListener('click', send);
+
+      document.getElementById('menuBtn').addEventListener('click', function() {
+        elSidebar.classList.add('open'); elOverlay.classList.add('show');
+      });
+      elOverlay.addEventListener('click', function() { elSidebar.classList.remove('open'); elOverlay.classList.remove('show'); });
+
+      deselect();
+
+      function openModal(index) {
+        var existing = getAgents();
+        var isEdit = typeof index === 'number';
+        var agent = isEdit ? existing[index] : { name: '', desc: '', icon: 'robot', tags: '' };
+        var m = document.createElement('div');
+        m.className = 'modal';
+        var ichtml = icons.map(function(ic) {
+          return '<span class="' + (ic === agent.icon ? 'active' : '') + '" data-ic="' + ic + '" style="background:rgba(187,0,255,0.08);color:var(--brand)"><i class="fas fa-' + ic + '"></i></span>';
+        }).join('');
+        m.innerHTML =
+          '<div class="modal-mask"></div>' +
+          '<div class="modal-box">' +
+          '<h3>' + (isEdit ? '编辑智能体' : '创建智能体') + '</h3>' +
+          '<div><label>图标</label><div class="icon-pick" id="iconPick">' + ichtml + '</div></div>' +
+          '<div><label>名称</label><input id="agentName" value="' + agent.name.replace(/"/g,'&quot;') + '" maxlength="20" placeholder="给智能体起个名"></div>' +
+          '<div><label>描述</label><textarea id="agentDesc" placeholder="这个智能体擅长什么？">' + agent.desc + '</textarea></div>' +
+          '<div><label>标签（逗号分隔）</label><input id="agentTags" value="' + agent.tags + '" placeholder="如：编程,全栈"></div>' +
+          '<div><label>系统提示词（定义智能体的性格和能力）</label><textarea id="agentPrompt" rows="3" placeholder="你是一个专业的代码助手，擅长...">' + (agent.prompt || '') + '</textarea></div>' +
+          '<button class="btn-ai" id="modalAi">✨ AI 完善</button>' +
+          '<div class="modal-actions">' +
+          '<span style="flex:1"></span>' +
+          '<button class="btn-cancel" id="modalCancel">取消</button>' +
+          '<button class="btn-save" id="modalSave">保存</button>' +
+          '</div>' +
+          '</div>';
+        document.body.appendChild(m);
+        var curIcon = agent.icon;
+        m.querySelector('#iconPick').addEventListener('click', function(e) {
+          var s = e.target.closest('span');
+          if (!s) return;
+          m.querySelectorAll('#iconPick span').forEach(function(t) { t.classList.remove('active'); });
+          s.classList.add('active');
+          curIcon = s.dataset.ic;
+        });
+        m.querySelector('.modal-mask').addEventListener('click', function() { m.remove(); });
+        m.querySelector('#modalCancel').addEventListener('click', function() { m.remove(); });
+        m.querySelector('#modalSave').addEventListener('click', function() {
+          var name = m.querySelector('#agentName').value.trim();
+          if (!name) return;
+          var newAgent = {
+            name: name,
+            desc: m.querySelector('#agentDesc').value.trim(),
+            icon: curIcon,
+            tags: m.querySelector('#agentTags').value.trim(),
+            prompt: m.querySelector('#agentPrompt').value.trim()
+          };
+          if (isEdit) {
+            var oldName = existing[index].name;
+            existing[index] = newAgent;
+            if (oldName !== newAgent.name) {
+              var ch = loadChats();
+              if (ch[oldName]) { ch[newAgent.name] = ch[oldName]; delete ch[oldName]; saveChats(ch); }
+            }
+          } else { existing.push(newAgent); }
+          saveAgents(existing);
+          renderAgentList();
+          m.remove();
+        });
+        m.querySelector('#modalAi').addEventListener('click', function() {
+          var btn = m.querySelector('#modalAi');
+          var name = m.querySelector('#agentName').value.trim();
+          var desc = m.querySelector('#agentDesc').value.trim();
+          btn.disabled = true;
+          btn.textContent = '⏳ 生成中...';
+          var hasInfo = name || desc;
+          fetch('/api/glm', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              model: 'glm-4-flash',
+              temperature: 0.7,
+              messages: [
+                { role: 'system', content: '你擅长为各类智能体设计人设。根据用户提供的名称和描述，输出3行内容：第1行=一句话描述、第2行=标签（逗号分隔）、第3行=完整的系统提示词（要写出个性、语气和说话风格，让人设鲜活）。直接输出3行，不要序号和前缀。' },
+                { role: 'user', content: hasInfo ? '智能体名称=' + name + '，描述=' + desc + '，请根据这些信息完善设定' : '请生成一个通用智能体的设定，实用且有个性。' }
+              ]
+            })
+          }).then(function(r) { return r.json(); }).then(function(data) {
+            var txt = (data.choices && data.choices[0] && data.choices[0].message.content) || '';
+            var lines = txt.trim().split('\n').filter(function(l) { return l.trim(); });
+            lines = lines.slice(0, 3).map(function(l) { return l.replace(/^(描述|标签|系统提示词)[：:]\s*/i, '').trim(); });
+            if (lines.length >= 1) m.querySelector('#agentDesc').value = lines[0];
+            if (lines.length >= 2) m.querySelector('#agentTags').value = lines[1];
+            if (lines.length >= 3) m.querySelector('#agentPrompt').value = lines[2];
+            btn.disabled = false;
+            btn.textContent = '✨ AI 完善';
+          }).catch(function() {
+            btn.disabled = false;
+            btn.textContent = '✨ AI 完善';
+          });
+        });
+      }
+
+      renderAgentList();
+    })();
+  </script>
+
+  <script>
+// ===== WebGL 流体背景引擎 =====
+(function() {
+'use strict';
+
+const canvas = document.getElementById('fluidCanvas');
+resizeCanvas();
+
+let config = {
+    SIM_RESOLUTION: 128,
+    DYE_RESOLUTION: 1024,
+    CAPTURE_RESOLUTION: 512,
+    DENSITY_DISSIPATION: 1,
+    VELOCITY_DISSIPATION: 0.2,
+    PRESSURE: 0,
+    PRESSURE_ITERATIONS: 20,
+    CURL: 0,
+    SPLAT_RADIUS: 0.05,
+    SPLAT_FORCE: 6000,
+    SHADING: true,
+    COLORFUL: true,
+    COLOR_UPDATE_SPEED: 10,
+    PAUSED: false,
+    FLUID_SPEED: 5,
+    BACK_COLOR: { r: 0, g: 0, b: 0 },
+    TRANSPARENT: false,
+    BLOOM: false,
+    BLOOM_ITERATIONS: 8,
+    BLOOM_RESOLUTION: 256,
+    BLOOM_INTENSITY: 0.8,
+    BLOOM_THRESHOLD: 0.6,
+    BLOOM_SOFT_KNEE: 0.7,
+    SUNRAYS: true,
+    SUNRAYS_RESOLUTION: 196,
+    SUNRAYS_WEIGHT: 1.0,
+}
+
+function pointerPrototype () {
+    this.id = -1;
+    this.texcoordX = 0;
+    this.texcoordY = 0;
+    this.prevTexcoordX = 0;
+    this.prevTexcoordY = 0;
+    this.deltaX = 0;
+    this.deltaY = 0;
+    this.down = false;
+    this.moved = false;
+    this.color = [30, 0, 300];
+}
+
+let pointers = [];
+let splatStack = [];
+pointers.push(new pointerPrototype());
+
+const { gl, ext } = getWebGLContext(canvas);
+
+if (isMobile()) {
+    config.DYE_RESOLUTION = 512;
+}
+if (!ext.supportLinearFiltering) {
+    config.DYE_RESOLUTION = 512;
+    config.SHADING = false;
+    config.BLOOM = false;
+    config.SUNRAYS = false;
+}
+
+function getWebGLContext (canvas) {
+    const params = { alpha: true, depth: false, stencil: false, antialias: false, preserveDrawingBuffer: false };
+
+    let gl = canvas.getContext('webgl2', params);
+    const isWebGL2 = !!gl;
+    if (!isWebGL2)
+        gl = canvas.getContext('webgl', params) || canvas.getContext('experimental-webgl', params);
+
+    let halfFloat;
+    let supportLinearFiltering;
+    if (isWebGL2) {
+        gl.getExtension('EXT_color_buffer_float');
+        supportLinearFiltering = gl.getExtension('OES_texture_float_linear');
+    } else {
+        halfFloat = gl.getExtension('OES_texture_half_float');
+        supportLinearFiltering = gl.getExtension('OES_texture_half_float_linear');
+    }
+
+    gl.clearColor(0.0, 0.0, 0.0, 1.0);
+
+    const halfFloatTexType = isWebGL2 ? gl.HALF_FLOAT : halfFloat.HALF_FLOAT_OES;
+    let formatRGBA;
+    let formatRG;
+    let formatR;
+
+    if (isWebGL2)
+    {
+        formatRGBA = getSupportedFormat(gl, gl.RGBA16F, gl.RGBA, halfFloatTexType);
+        formatRG = getSupportedFormat(gl, gl.RG16F, gl.RG, halfFloatTexType);
+        formatR = getSupportedFormat(gl, gl.R16F, gl.RED, halfFloatTexType);
+    }
+    else
+    {
+        formatRGBA = getSupportedFormat(gl, gl.RGBA, gl.RGBA, halfFloatTexType);
+        formatRG = getSupportedFormat(gl, gl.RGBA, gl.RGBA, halfFloatTexType);
+        formatR = getSupportedFormat(gl, gl.RGBA, gl.RGBA, halfFloatTexType);
+    }
+
+    return {
+        gl,
+        ext: {
+            formatRGBA,
+            formatRG,
+            formatR,
+            halfFloatTexType,
+            supportLinearFiltering
+        }
+    };
+}
+
+function getSupportedFormat (gl, internalFormat, format, type)
+{
+    if (!supportRenderTextureFormat(gl, internalFormat, format, type))
+    {
+        switch (internalFormat)
+        {
+            case gl.R16F:
+                return getSupportedFormat(gl, gl.RG16F, gl.RG, type);
+            case gl.RG16F:
+                return getSupportedFormat(gl, gl.RGBA16F, gl.RGBA, type);
+            default:
+                return null;
+        }
+    }
+
+    return {
+        internalFormat,
+        format
+    }
+}
+
+function supportRenderTextureFormat (gl, internalFormat, format, type) {
+    let texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, 4, 4, 0, format, type, null);
+
+    let fbo = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+
+    let status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+    return status == gl.FRAMEBUFFER_COMPLETE;
+}
+
+function isMobile () {
+    return /Mobi|Android/i.test(navigator.userAgent);
+}
+
+function clamp01 (input) {
+    return Math.min(Math.max(input, 0), 1);
+}
+
+class Material {
+    constructor (vertexShader, fragmentShaderSource) {
+        this.vertexShader = vertexShader;
+        this.fragmentShaderSource = fragmentShaderSource;
+        this.programs = [];
+        this.activeProgram = null;
+        this.uniforms = [];
+    }
+
+    setKeywords (keywords) {
+        let hash = 0;
+        for (let i = 0; i < keywords.length; i++)
+            hash += hashCode(keywords[i]);
+
+        let program = this.programs[hash];
+        if (program == null)
+        {
+            let fragmentShader = compileShader(gl.FRAGMENT_SHADER, this.fragmentShaderSource, keywords);
+            program = createProgram(this.vertexShader, fragmentShader);
+            this.programs[hash] = program;
+        }
+
+        if (program == this.activeProgram) return;
+
+        this.uniforms = getUniforms(program);
+        this.activeProgram = program;
+    }
+
+    bind () {
+        gl.useProgram(this.activeProgram);
+    }
+}
+
+class Program {
+    constructor (vertexShader, fragmentShader) {
+        this.uniforms = {};
+        this.program = createProgram(vertexShader, fragmentShader);
+        this.uniforms = getUniforms(this.program);
+    }
+
+    bind () {
+        gl.useProgram(this.program);
+    }
+}
+
+function createProgram (vertexShader, fragmentShader) {
+    let program = gl.createProgram();
+    gl.attachShader(program, vertexShader);
+    gl.attachShader(program, fragmentShader);
+    gl.linkProgram(program);
+
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS))
+        console.trace(gl.getProgramInfoLog(program));
+
+    return program;
+}
+
+function getUniforms (program) {
+    let uniforms = [];
+    let uniformCount = gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS);
+    for (let i = 0; i < uniformCount; i++) {
+        let uniformName = gl.getActiveUniform(program, i).name;
+        uniforms[uniformName] = gl.getUniformLocation(program, uniformName);
+    }
+    return uniforms;
+}
+
+function compileShader (type, source, keywords) {
+    source = addKeywords(source, keywords);
+
+    const shader = gl.createShader(type);
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS))
+        console.trace(gl.getShaderInfoLog(shader));
+
+    return shader;
+};
+
+function addKeywords (source, keywords) {
+    if (keywords == null) return source;
+    let keywordsString = '';
+    keywords.forEach(keyword => {
+        keywordsString += '#define ' + keyword + '\n';
+    });
+    return keywordsString + source;
+}
+
+const baseVertexShader = compileShader(gl.VERTEX_SHADER, `
+    precision highp float;
+
+    attribute vec2 aPosition;
+    varying vec2 vUv;
+    varying vec2 vL;
+    varying vec2 vR;
+    varying vec2 vT;
+    varying vec2 vB;
+    uniform vec2 texelSize;
+
+    void main () {
+        vUv = aPosition * 0.5 + 0.5;
+        vL = vUv - vec2(texelSize.x, 0.0);
+        vR = vUv + vec2(texelSize.x, 0.0);
+        vT = vUv + vec2(0.0, texelSize.y);
+        vB = vUv - vec2(0.0, texelSize.y);
+        gl_Position = vec4(aPosition, 0.0, 1.0);
+    }
+`);
+
+const blurVertexShader = compileShader(gl.VERTEX_SHADER, `
+    precision highp float;
+
+    attribute vec2 aPosition;
+    varying vec2 vUv;
+    varying vec2 vL;
+    varying vec2 vR;
+    uniform vec2 texelSize;
+
+    void main () {
+        vUv = aPosition * 0.5 + 0.5;
+        float offset = 1.33333333;
+        vL = vUv - texelSize * offset;
+        vR = vUv + texelSize * offset;
+        gl_Position = vec4(aPosition, 0.0, 1.0);
+    }
+`);
+
+const blurShader = compileShader(gl.FRAGMENT_SHADER, `
+    precision mediump float;
+    precision mediump sampler2D;
+
+    varying vec2 vUv;
+    varying vec2 vL;
+    varying vec2 vR;
+    uniform sampler2D uTexture;
+
+    void main () {
+        vec4 sum = texture2D(uTexture, vUv) * 0.29411764;
+        sum += texture2D(uTexture, vL) * 0.35294117;
+        sum += texture2D(uTexture, vR) * 0.35294117;
+        gl_FragColor = sum;
+    }
+`);
+
+const copyShader = compileShader(gl.FRAGMENT_SHADER, `
+    precision mediump float;
+    precision mediump sampler2D;
+
+    varying highp vec2 vUv;
+    uniform sampler2D uTexture;
+
+    void main () {
+        gl_FragColor = texture2D(uTexture, vUv);
+    }
+`);
+
+const clearShader = compileShader(gl.FRAGMENT_SHADER, `
+    precision mediump float;
+    precision mediump sampler2D;
+
+    varying highp vec2 vUv;
+    uniform sampler2D uTexture;
+    uniform float value;
+
+    void main () {
+        gl_FragColor = value * texture2D(uTexture, vUv);
+    }
+`);
+
+const colorShader = compileShader(gl.FRAGMENT_SHADER, `
+    precision mediump float;
+
+    uniform vec4 color;
+
+    void main () {
+        gl_FragColor = color;
+    }
+`);
+
+const checkerboardShader = compileShader(gl.FRAGMENT_SHADER, `
+    precision highp float;
+    precision highp sampler2D;
+
+    varying vec2 vUv;
+    uniform sampler2D uTexture;
+    uniform float aspectRatio;
+
+    #define SCALE 25.0
+
+    void main () {
+        vec2 uv = floor(vUv * SCALE * vec2(aspectRatio, 1.0));
+        float v = mod(uv.x + uv.y, 2.0);
+        v = v * 0.1 + 0.8;
+        gl_FragColor = vec4(vec3(v), 1.0);
+    }
+`);
+
+const displayShaderSource = `
+    precision highp float;
+    precision highp sampler2D;
+
+    varying vec2 vUv;
+    varying vec2 vL;
+    varying vec2 vR;
+    varying vec2 vT;
+    varying vec2 vB;
+    uniform sampler2D uTexture;
+    uniform sampler2D uBloom;
+    uniform sampler2D uSunrays;
+    uniform sampler2D uDithering;
+    uniform vec2 ditherScale;
+    uniform vec2 texelSize;
+
+    vec3 linearToGamma (vec3 color) {
+        color = max(color, vec3(0));
+        return max(1.055 * pow(color, vec3(0.416666667)) - 0.055, vec3(0));
+    }
+
+    void main () {
+        vec3 c = texture2D(uTexture, vUv).rgb;
+
+    #ifdef SHADING
+        vec3 lc = texture2D(uTexture, vL).rgb;
+        vec3 rc = texture2D(uTexture, vR).rgb;
+        vec3 tc = texture2D(uTexture, vT).rgb;
+        vec3 bc = texture2D(uTexture, vB).rgb;
+
+        float dx = length(rc) - length(lc);
+        float dy = length(tc) - length(bc);
+
+        vec3 n = normalize(vec3(dx, dy, length(texelSize)));
+        vec3 l = vec3(0.0, 0.0, 1.0);
+
+        float diffuse = clamp(dot(n, l) + 0.7, 0.7, 1.0);
+        c *= diffuse;
+    #endif
+
+    #ifdef BLOOM
+        vec3 bloom = texture2D(uBloom, vUv).rgb;
+    #endif
+
+    #ifdef SUNRAYS
+        float sunrays = texture2D(uSunrays, vUv).r;
+        c *= sunrays;
+    #ifdef BLOOM
+        bloom *= sunrays;
+    #endif
+    #endif
+
+    #ifdef BLOOM
+        float noise = texture2D(uDithering, vUv * ditherScale).r;
+        noise = noise * 2.0 - 1.0;
+        bloom += noise / 255.0;
+        bloom = linearToGamma(bloom);
+        c += bloom;
+    #endif
+
+        float a = max(c.r, max(c.g, c.b));
+        gl_FragColor = vec4(c, a);
+    }
+`;
+
+const bloomPrefilterShader = compileShader(gl.FRAGMENT_SHADER, `
+    precision mediump float;
+    precision mediump sampler2D;
+
+    varying vec2 vUv;
+    uniform sampler2D uTexture;
+    uniform vec3 curve;
+    uniform float threshold;
+
+    void main () {
+        vec3 c = texture2D(uTexture, vUv).rgb;
+        float br = max(c.r, max(c.g, c.b));
+        float rq = clamp(br - curve.x, 0.0, curve.y);
+        rq = curve.z * rq * rq;
+        c *= max(rq, br - threshold) / max(br, 0.0001);
+        gl_FragColor = vec4(c, 0.0);
+    }
+`);
+
+const bloomBlurShader = compileShader(gl.FRAGMENT_SHADER, `
+    precision mediump float;
+    precision mediump sampler2D;
+
+    varying vec2 vL;
+    varying vec2 vR;
+    varying vec2 vT;
+    varying vec2 vB;
+    uniform sampler2D uTexture;
+
+    void main () {
+        vec4 sum = vec4(0.0);
+        sum += texture2D(uTexture, vL);
+        sum += texture2D(uTexture, vR);
+        sum += texture2D(uTexture, vT);
+        sum += texture2D(uTexture, vB);
+        sum *= 0.25;
+        gl_FragColor = sum;
+    }
+`);
+
+const bloomFinalShader = compileShader(gl.FRAGMENT_SHADER, `
+    precision mediump float;
+    precision mediump sampler2D;
+
+    varying vec2 vL;
+    varying vec2 vR;
+    varying vec2 vT;
+    varying vec2 vB;
+    uniform sampler2D uTexture;
+    uniform float intensity;
+
+    void main () {
+        vec4 sum = vec4(0.0);
+        sum += texture2D(uTexture, vL);
+        sum += texture2D(uTexture, vR);
+        sum += texture2D(uTexture, vT);
+        sum += texture2D(uTexture, vB);
+        sum *= 0.25;
+        gl_FragColor = sum * intensity;
+    }
+`);
+
+const sunraysMaskShader = compileShader(gl.FRAGMENT_SHADER, `
+    precision highp float;
+    precision highp sampler2D;
+
+    varying vec2 vUv;
+    uniform sampler2D uTexture;
+
+    void main () {
+        vec4 c = texture2D(uTexture, vUv);
+        float br = max(c.r, max(c.g, c.b));
+        c.a = 1.0 - min(max(br * 20.0, 0.0), 0.8);
+        gl_FragColor = c;
+    }
+`);
+
+const sunraysShader = compileShader(gl.FRAGMENT_SHADER, `
+    precision highp float;
+    precision highp sampler2D;
+
+    varying vec2 vUv;
+    uniform sampler2D uTexture;
+    uniform float weight;
+
+    #define ITERATIONS 16
+
+    void main () {
+        float Density = 0.3;
+        float Decay = 0.95;
+        float Exposure = 0.7;
+
+        vec2 coord = vUv;
+        vec2 dir = vUv - 0.5;
+
+        dir *= 1.0 / float(ITERATIONS) * Density;
+        float illuminationDecay = 1.0;
+
+        float color = texture2D(uTexture, vUv).a;
+
+        for (int i = 0; i < ITERATIONS; i++)
+        {
+            coord -= dir;
+            float col = texture2D(uTexture, coord).a;
+            color += col * illuminationDecay * weight;
+            illuminationDecay *= Decay;
+        }
+
+        gl_FragColor = vec4(color * Exposure, 0.0, 0.0, 1.0);
+    }
+`);
+
+const splatShader = compileShader(gl.FRAGMENT_SHADER, `
+    precision highp float;
+    precision highp sampler2D;
+
+    varying vec2 vUv;
+    uniform sampler2D uTarget;
+    uniform float aspectRatio;
+    uniform vec3 color;
+    uniform vec2 point;
+    uniform float radius;
+
+    void main () {
+        vec2 p = vUv - point.xy;
+        p.x *= aspectRatio;
+        vec3 splat = exp(-dot(p, p) / radius) * color;
+        vec3 base = texture2D(uTarget, vUv).xyz;
+        gl_FragColor = vec4(base + splat, 1.0);
+    }
+`);
+
+const advectionShader = compileShader(gl.FRAGMENT_SHADER, `
+    precision highp float;
+    precision highp sampler2D;
+
+    varying vec2 vUv;
+    uniform sampler2D uVelocity;
+    uniform sampler2D uSource;
+    uniform vec2 texelSize;
+    uniform vec2 dyeTexelSize;
+    uniform float dt;
+    uniform float dissipation;
+
+    vec4 bilerp (sampler2D sam, vec2 uv, vec2 tsize) {
+        vec2 st = uv / tsize - 0.5;
+
+        vec2 iuv = floor(st);
+        vec2 fuv = fract(st);
+
+        vec4 a = texture2D(sam, (iuv + vec2(0.5, 0.5)) * tsize);
+        vec4 b = texture2D(sam, (iuv + vec2(1.5, 0.5)) * tsize);
+        vec4 c = texture2D(sam, (iuv + vec2(0.5, 1.5)) * tsize);
+        vec4 d = texture2D(sam, (iuv + vec2(1.5, 1.5)) * tsize);
+
+        return mix(mix(a, b, fuv.x), mix(c, d, fuv.x), fuv.y);
+    }
+
+    void main () {
+    #ifdef MANUAL_FILTERING
+        vec2 coord = vUv - dt * bilerp(uVelocity, vUv, texelSize).xy * texelSize;
+        vec4 result = bilerp(uSource, coord, dyeTexelSize);
+    #else
+        vec2 coord = vUv - dt * texture2D(uVelocity, vUv).xy * texelSize;
+        vec4 result = texture2D(uSource, coord);
+    #endif
+        float decay = 1.0 + dissipation * dt;
+        gl_FragColor = result / decay;
+    }`,
+    ext.supportLinearFiltering ? null : ['MANUAL_FILTERING']
+);
+
+const divergenceShader = compileShader(gl.FRAGMENT_SHADER, `
+    precision mediump float;
+    precision mediump sampler2D;
+
+    varying highp vec2 vUv;
+    varying highp vec2 vL;
+    varying highp vec2 vR;
+    varying highp vec2 vT;
+    varying highp vec2 vB;
+    uniform sampler2D uVelocity;
+
+    void main () {
+        float L = texture2D(uVelocity, vL).x;
+        float R = texture2D(uVelocity, vR).x;
+        float T = texture2D(uVelocity, vT).y;
+        float B = texture2D(uVelocity, vB).y;
+
+        vec2 C = texture2D(uVelocity, vUv).xy;
+        if (vL.x < 0.0) { L = -C.x; }
+        if (vR.x > 1.0) { R = -C.x; }
+        if (vT.y > 1.0) { T = -C.y; }
+        if (vB.y < 0.0) { B = -C.y; }
+
+        float div = 0.5 * (R - L + T - B);
+        gl_FragColor = vec4(div, 0.0, 0.0, 1.0);
+    }
+`);
+
+const curlShader = compileShader(gl.FRAGMENT_SHADER, `
+    precision mediump float;
+    precision mediump sampler2D;
+
+    varying highp vec2 vUv;
+    varying highp vec2 vL;
+    varying highp vec2 vR;
+    varying highp vec2 vT;
+    varying highp vec2 vB;
+    uniform sampler2D uVelocity;
+
+    void main () {
+        float L = texture2D(uVelocity, vL).y;
+        float R = texture2D(uVelocity, vR).y;
+        float T = texture2D(uVelocity, vT).x;
+        float B = texture2D(uVelocity, vB).x;
+        float vorticity = R - L - T + B;
+        gl_FragColor = vec4(0.5 * vorticity, 0.0, 0.0, 1.0);
+    }
+`);
+
+const vorticityShader = compileShader(gl.FRAGMENT_SHADER, `
+    precision highp float;
+    precision highp sampler2D;
+
+    varying vec2 vUv;
+    varying vec2 vL;
+    varying vec2 vR;
+    varying vec2 vT;
+    varying vec2 vB;
+    uniform sampler2D uVelocity;
+    uniform sampler2D uCurl;
+    uniform float curl;
+    uniform float dt;
+
+    void main () {
+        float L = texture2D(uCurl, vL).x;
+        float R = texture2D(uCurl, vR).x;
+        float T = texture2D(uCurl, vT).x;
+        float B = texture2D(uCurl, vB).x;
+        float C = texture2D(uCurl, vUv).x;
+
+        vec2 force = 0.5 * vec2(abs(T) - abs(B), abs(R) - abs(L));
+        force /= length(force) + 0.0001;
+        force *= curl * C;
+        force.y *= -1.0;
+
+        vec2 velocity = texture2D(uVelocity, vUv).xy;
+        velocity += force * dt;
+        velocity = min(max(velocity, -1000.0), 1000.0);
+        gl_FragColor = vec4(velocity, 0.0, 1.0);
+    }
+`);
+
+const pressureShader = compileShader(gl.FRAGMENT_SHADER, `
+    precision mediump float;
+    precision mediump sampler2D;
+
+    varying highp vec2 vUv;
+    varying highp vec2 vL;
+    varying highp vec2 vR;
+    varying highp vec2 vT;
+    varying highp vec2 vB;
+    uniform sampler2D uPressure;
+    uniform sampler2D uDivergence;
+
+    void main () {
+        float L = texture2D(uPressure, vL).x;
+        float R = texture2D(uPressure, vR).x;
+        float T = texture2D(uPressure, vT).x;
+        float B = texture2D(uPressure, vB).x;
+        float C = texture2D(uPressure, vUv).x;
+        float divergence = texture2D(uDivergence, vUv).x;
+        float pressure = (L + R + B + T - divergence) * 0.25;
+        gl_FragColor = vec4(pressure, 0.0, 0.0, 1.0);
+    }
+`);
+
+const gradientSubtractShader = compileShader(gl.FRAGMENT_SHADER, `
+    precision mediump float;
+    precision mediump sampler2D;
+
+    varying highp vec2 vUv;
+    varying highp vec2 vL;
+    varying highp vec2 vR;
+    varying highp vec2 vT;
+    varying highp vec2 vB;
+    uniform sampler2D uPressure;
+    uniform sampler2D uVelocity;
+
+    void main () {
+        float L = texture2D(uPressure, vL).x;
+        float R = texture2D(uPressure, vR).x;
+        float T = texture2D(uPressure, vT).x;
+        float B = texture2D(uPressure, vB).x;
+        vec2 velocity = texture2D(uVelocity, vUv).xy;
+        velocity.xy -= vec2(R - L, T - B);
+        gl_FragColor = vec4(velocity, 0.0, 1.0);
+    }
+`);
+
+const blit = (() => {
+    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, -1, 1, 1, 1, 1, -1]), gl.STATIC_DRAW);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.createBuffer());
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array([0, 1, 2, 0, 2, 3]), gl.STATIC_DRAW);
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(0);
+
+    return (target, clear = false) => {
+        if (target == null)
+        {
+            gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        }
+        else
+        {
+            gl.viewport(0, 0, target.width, target.height);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
+        }
+        if (clear)
+        {
+            gl.clearColor(0.0, 0.0, 0.0, 1.0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+        }
+        gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
+    }
+})();
+
+let dye;
+let velocity;
+let divergence;
+let curl;
+let pressure;
+let bloom;
+let bloomFramebuffers = [];
+let sunrays;
+let sunraysTemp;
+
+const blurProgram            = new Program(blurVertexShader, blurShader);
+const copyProgram            = new Program(baseVertexShader, copyShader);
+const clearProgram           = new Program(baseVertexShader, clearShader);
+const colorProgram           = new Program(baseVertexShader, colorShader);
+const checkerboardProgram    = new Program(baseVertexShader, checkerboardShader);
+const bloomPrefilterProgram  = new Program(baseVertexShader, bloomPrefilterShader);
+const bloomBlurProgram       = new Program(baseVertexShader, bloomBlurShader);
+const bloomFinalProgram      = new Program(baseVertexShader, bloomFinalShader);
+const sunraysMaskProgram     = new Program(baseVertexShader, sunraysMaskShader);
+const sunraysProgram         = new Program(baseVertexShader, sunraysShader);
+const splatProgram           = new Program(baseVertexShader, splatShader);
+const advectionProgram       = new Program(baseVertexShader, advectionShader);
+const divergenceProgram      = new Program(baseVertexShader, divergenceShader);
+const curlProgram            = new Program(baseVertexShader, curlShader);
+const vorticityProgram       = new Program(baseVertexShader, vorticityShader);
+const pressureProgram        = new Program(baseVertexShader, pressureShader);
+const gradienSubtractProgram = new Program(baseVertexShader, gradientSubtractShader);
+
+const displayMaterial = new Material(baseVertexShader, displayShaderSource);
+
+function initFramebuffers () {
+    let simRes = getResolution(config.SIM_RESOLUTION);
+    let dyeRes = getResolution(config.DYE_RESOLUTION);
+
+    const texType = ext.halfFloatTexType;
+    const rgba    = ext.formatRGBA;
+    const rg      = ext.formatRG;
+    const r       = ext.formatR;
+    const filtering = ext.supportLinearFiltering ? gl.LINEAR : gl.NEAREST;
+
+    gl.disable(gl.BLEND);
+
+    if (dye == null)
+        dye = createDoubleFBO(dyeRes.width, dyeRes.height, rgba.internalFormat, rgba.format, texType, filtering);
+    else
+        dye = resizeDoubleFBO(dye, dyeRes.width, dyeRes.height, rgba.internalFormat, rgba.format, texType, filtering);
+
+    if (velocity == null)
+        velocity = createDoubleFBO(simRes.width, simRes.height, rg.internalFormat, rg.format, texType, filtering);
+    else
+        velocity = resizeDoubleFBO(velocity, simRes.width, simRes.height, rg.internalFormat, rg.format, texType, filtering);
+
+    divergence = createFBO      (simRes.width, simRes.height, r.internalFormat, r.format, texType, gl.NEAREST);
+    curl       = createFBO      (simRes.width, simRes.height, r.internalFormat, r.format, texType, gl.NEAREST);
+    pressure   = createDoubleFBO(simRes.width, simRes.height, r.internalFormat, r.format, texType, gl.NEAREST);
+
+    initBloomFramebuffers();
+    initSunraysFramebuffers();
+}
+
+function initBloomFramebuffers () {
+    let res = getResolution(config.BLOOM_RESOLUTION);
+
+    const texType = ext.halfFloatTexType;
+    const rgba = ext.formatRGBA;
+    const filtering = ext.supportLinearFiltering ? gl.LINEAR : gl.NEAREST;
+
+    bloom = createFBO(res.width, res.height, rgba.internalFormat, rgba.format, texType, filtering);
+
+    bloomFramebuffers.length = 0;
+    for (let i = 0; i < config.BLOOM_ITERATIONS; i++)
+    {
+        let width = res.width >> (i + 1);
+        let height = res.height >> (i + 1);
+
+        if (width < 2 || height < 2) break;
+
+        let fbo = createFBO(width, height, rgba.internalFormat, rgba.format, texType, filtering);
+        bloomFramebuffers.push(fbo);
+    }
+}
+
+function initSunraysFramebuffers () {
+    let res = getResolution(config.SUNRAYS_RESOLUTION);
+
+    const texType = ext.halfFloatTexType;
+    const r = ext.formatR;
+    const filtering = ext.supportLinearFiltering ? gl.LINEAR : gl.NEAREST;
+
+    sunrays     = createFBO(res.width, res.height, r.internalFormat, r.format, texType, filtering);
+    sunraysTemp = createFBO(res.width, res.height, r.internalFormat, r.format, texType, filtering);
+}
+
+function createFBO (w, h, internalFormat, format, type, param) {
+    gl.activeTexture(gl.TEXTURE0);
+    let texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, param);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, param);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, w, h, 0, format, type, null);
+
+    let fbo = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+    gl.viewport(0, 0, w, h);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+
+    let texelSizeX = 1.0 / w;
+    let texelSizeY = 1.0 / h;
+
+    return {
+        texture,
+        fbo,
+        width: w,
+        height: h,
+        texelSizeX,
+        texelSizeY,
+        attach (id) {
+            gl.activeTexture(gl.TEXTURE0 + id);
+            gl.bindTexture(gl.TEXTURE_2D, texture);
+            return id;
+        }
+    };
+}
+
+function createDoubleFBO (w, h, internalFormat, format, type, param) {
+    let fbo1 = createFBO(w, h, internalFormat, format, type, param);
+    let fbo2 = createFBO(w, h, internalFormat, format, type, param);
+
+    return {
+        width: w,
+        height: h,
+        texelSizeX: fbo1.texelSizeX,
+        texelSizeY: fbo1.texelSizeY,
+        get read () {
+            return fbo1;
+        },
+        set read (value) {
+            fbo1 = value;
+        },
+        get write () {
+            return fbo2;
+        },
+        set write (value) {
+            fbo2 = value;
+        },
+        swap () {
+            let temp = fbo1;
+            fbo1 = fbo2;
+            fbo2 = temp;
+        }
+    }
+}
+
+function resizeFBO (target, w, h, internalFormat, format, type, param) {
+    let newFBO = createFBO(w, h, internalFormat, format, type, param);
+    copyProgram.bind();
+    gl.uniform1i(copyProgram.uniforms.uTexture, target.attach(0));
+    blit(newFBO);
+    return newFBO;
+}
+
+function resizeDoubleFBO (target, w, h, internalFormat, format, type, param) {
+    if (target.width == w && target.height == h)
+        return target;
+    target.read = resizeFBO(target.read, w, h, internalFormat, format, type, param);
+    target.write = createFBO(w, h, internalFormat, format, type, param);
+    target.width = w;
+    target.height = h;
+    target.texelSizeX = 1.0 / w;
+    target.texelSizeY = 1.0 / h;
+    return target;
+}
+
+function updateKeywords () {
+    let displayKeywords = [];
+    if (config.SHADING) displayKeywords.push("SHADING");
+    if (config.BLOOM) displayKeywords.push("BLOOM");
+    if (config.SUNRAYS) displayKeywords.push("SUNRAYS");
+    displayMaterial.setKeywords(displayKeywords);
+}
+
+updateKeywords();
+initFramebuffers();
+multipleSplats(parseInt(Math.random() * 3) + 1);
+// 手指持续滑动——不松手，自由游走
+// 两个手指同时拖动
+let fingers = [
+  { x: Math.random(), y: Math.random(), px: 0, py: 0, angle: Math.random() * Math.PI * 2, t: 0 },
+  { x: Math.random(), y: Math.random(), px: 0, py: 0, angle: Math.random() * Math.PI * 2, t: 0.5 }
+];
+fingers.forEach(f => { f.px = f.x; f.py = f.y; });
+
+function updateFingers() {
+  const speed = (config.FLUID_SPEED || 5) * 0.0005;
+  fingers.forEach((f, i) => {
+    f.t += 0.02;
+    f.angle += (Math.sin(f.t * (0.03 + i * 0.01)) * 0.008 + Math.sin(f.t * (0.07 + i * 0.02)) * 0.005);
+    f.x += Math.cos(f.angle) * speed; f.y += Math.sin(f.angle) * speed;
+    const margin = 0.08;
+    if (f.x < margin) f.angle += 0.03;
+    if (f.x > 1 - margin) f.angle += Math.PI - 0.03;
+    if (f.y < margin) f.angle += 0.03;
+    if (f.y > 1 - margin) f.angle += Math.PI - 0.03;
+    f.x = Math.max(0.01, Math.min(0.99, f.x));
+    f.y = Math.max(0.01, Math.min(0.99, f.y));
+    const dx = f.x - f.px, dy = f.y - f.py;
+    f.px = f.x; f.py = f.y;
+    if (Math.abs(dx) < 0.00001 && Math.abs(dy) < 0.00001) return;
+    const color = generateColor();
+    color.r *= 0.8; color.g *= 0.8; color.b *= 0.8;
+    splat(f.x, f.y, dx * 6000, dy * 6000, color);
+  });
+}
+initFramebuffers();
+multipleSplats(parseInt(Math.random() * 3) + 1);
+
+let lastUpdateTime = Date.now();
+let colorUpdateTimer = 0.0;
+const ditheringTexture = {
+    texture: null,
+    width: 1,
+    height: 1,
+    attach(id) {
+        gl.activeTexture(gl.TEXTURE0 + id);
+        if (this.texture) {
+            gl.bindTexture(gl.TEXTURE_2D, this.texture);
+        } else {
+            let texture = gl.createTexture();
+            gl.bindTexture(gl.TEXTURE_2D, texture);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, 1, 1, 0, gl.RGB, gl.UNSIGNED_BYTE, new Uint8Array([255, 255, 255]));
+            this.texture = texture;
+        }
+        return id;
+    }
+};
+
+update();
+
+function update () {
+    const dt = calcDeltaTime();
+    if (!config.PAUSED) {
+      updateFingers();
+    }
+    if (resizeCanvas())
+        initFramebuffers();
+    updateColors(dt);
+    applyInputs();
+    if (!config.PAUSED)
+        step(dt);
+    render(null);
+    requestAnimationFrame(update);
+}
+
+function calcDeltaTime () {
+    let now = Date.now();
+    let dt = (now - lastUpdateTime) / 1000;
+    dt = Math.min(dt, 0.016666);
+    lastUpdateTime = now;
+    return dt;
+}
+
+function resizeCanvas () {
+    let width = scaleByPixelRatio(canvas.clientWidth);
+    let height = scaleByPixelRatio(canvas.clientHeight);
+    if (canvas.width != width || canvas.height != height) {
+        canvas.width = width;
+        canvas.height = height;
+        return true;
+    }
+    return false;
+}
+
+function updateColors (dt) {
+    if (!config.COLORFUL) return;
+
+    colorUpdateTimer += dt * config.COLOR_UPDATE_SPEED;
+    if (colorUpdateTimer >= 1) {
+        colorUpdateTimer = wrap(colorUpdateTimer, 0, 1);
+        pointers.forEach(p => {
+            p.color = generateColor();
+        });
+    }
+}
+
+function applyInputs () {
+    if (splatStack.length > 0)
+        multipleSplats(splatStack.pop());
+
+    pointers.forEach(p => {
+        if (p.moved) {
+            p.moved = false;
+            splatPointer(p);
+        }
+    });
+}
+
+function step (dt) {
+    gl.disable(gl.BLEND);
+
+    curlProgram.bind();
+    gl.uniform2f(curlProgram.uniforms.texelSize, velocity.texelSizeX, velocity.texelSizeY);
+    gl.uniform1i(curlProgram.uniforms.uVelocity, velocity.read.attach(0));
+    blit(curl);
+
+    vorticityProgram.bind();
+    gl.uniform2f(vorticityProgram.uniforms.texelSize, velocity.texelSizeX, velocity.texelSizeY);
+    gl.uniform1i(vorticityProgram.uniforms.uVelocity, velocity.read.attach(0));
+    gl.uniform1i(vorticityProgram.uniforms.uCurl, curl.attach(1));
+    gl.uniform1f(vorticityProgram.uniforms.curl, config.CURL);
+    gl.uniform1f(vorticityProgram.uniforms.dt, dt);
+    blit(velocity.write);
+    velocity.swap();
+
+    divergenceProgram.bind();
+    gl.uniform2f(divergenceProgram.uniforms.texelSize, velocity.texelSizeX, velocity.texelSizeY);
+    gl.uniform1i(divergenceProgram.uniforms.uVelocity, velocity.read.attach(0));
+    blit(divergence);
+
+    clearProgram.bind();
+    gl.uniform1i(clearProgram.uniforms.uTexture, pressure.read.attach(0));
+    gl.uniform1f(clearProgram.uniforms.value, config.PRESSURE);
+    blit(pressure.write);
+    pressure.swap();
+
+    pressureProgram.bind();
+    gl.uniform2f(pressureProgram.uniforms.texelSize, velocity.texelSizeX, velocity.texelSizeY);
+    gl.uniform1i(pressureProgram.uniforms.uDivergence, divergence.attach(0));
+    for (let i = 0; i < config.PRESSURE_ITERATIONS; i++) {
+        gl.uniform1i(pressureProgram.uniforms.uPressure, pressure.read.attach(1));
+        blit(pressure.write);
+        pressure.swap();
+    }
+
+    gradienSubtractProgram.bind();
+    gl.uniform2f(gradienSubtractProgram.uniforms.texelSize, velocity.texelSizeX, velocity.texelSizeY);
+    gl.uniform1i(gradienSubtractProgram.uniforms.uPressure, pressure.read.attach(0));
+    gl.uniform1i(gradienSubtractProgram.uniforms.uVelocity, velocity.read.attach(1));
+    blit(velocity.write);
+    velocity.swap();
+
+    advectionProgram.bind();
+    gl.uniform2f(advectionProgram.uniforms.texelSize, velocity.texelSizeX, velocity.texelSizeY);
+    if (!ext.supportLinearFiltering)
+        gl.uniform2f(advectionProgram.uniforms.dyeTexelSize, velocity.texelSizeX, velocity.texelSizeY);
+    let velocityId = velocity.read.attach(0);
+    gl.uniform1i(advectionProgram.uniforms.uVelocity, velocityId);
+    gl.uniform1i(advectionProgram.uniforms.uSource, velocityId);
+    gl.uniform1f(advectionProgram.uniforms.dt, dt);
+    gl.uniform1f(advectionProgram.uniforms.dissipation, config.VELOCITY_DISSIPATION);
+    blit(velocity.write);
+    velocity.swap();
+
+    if (!ext.supportLinearFiltering)
+        gl.uniform2f(advectionProgram.uniforms.dyeTexelSize, dye.texelSizeX, dye.texelSizeY);
+    gl.uniform1i(advectionProgram.uniforms.uVelocity, velocity.read.attach(0));
+    gl.uniform1i(advectionProgram.uniforms.uSource, dye.read.attach(1));
+    gl.uniform1f(advectionProgram.uniforms.dissipation, config.DENSITY_DISSIPATION);
+    blit(dye.write);
+    dye.swap();
+}
+
+function render (target) {
+    if (config.BLOOM)
+        applyBloom(dye.read, bloom);
+    if (config.SUNRAYS) {
+        applySunrays(dye.read, dye.write, sunrays);
+        blur(sunrays, sunraysTemp, 1);
+    }
+
+    if (target == null || !config.TRANSPARENT) {
+        gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+        gl.enable(gl.BLEND);
+    }
+    else {
+        gl.disable(gl.BLEND);
+    }
+
+    if (!config.TRANSPARENT)
+        drawColor(target, normalizeColor(config.BACK_COLOR));
+    if (target == null && config.TRANSPARENT)
+        drawCheckerboard(target);
+    drawDisplay(target);
+}
+
+function drawColor (target, color) {
+    colorProgram.bind();
+    gl.uniform4f(colorProgram.uniforms.color, color.r, color.g, color.b, 1);
+    blit(target);
+}
+
+function drawCheckerboard (target) {
+    checkerboardProgram.bind();
+    gl.uniform1f(checkerboardProgram.uniforms.aspectRatio, canvas.width / canvas.height);
+    blit(target);
+}
+
+function drawDisplay (target) {
+    let width = target == null ? gl.drawingBufferWidth : target.width;
+    let height = target == null ? gl.drawingBufferHeight : target.height;
+
+    displayMaterial.bind();
+    if (config.SHADING)
+        gl.uniform2f(displayMaterial.uniforms.texelSize, 1.0 / width, 1.0 / height);
+    gl.uniform1i(displayMaterial.uniforms.uTexture, dye.read.attach(0));
+    if (config.BLOOM) {
+        gl.uniform1i(displayMaterial.uniforms.uBloom, bloom.attach(1));
+        gl.uniform1i(displayMaterial.uniforms.uDithering, ditheringTexture.attach(2));
+        let scale = getTextureScale(ditheringTexture, width, height);
+        gl.uniform2f(displayMaterial.uniforms.ditherScale, scale.x, scale.y);
+    }
+    if (config.SUNRAYS)
+        gl.uniform1i(displayMaterial.uniforms.uSunrays, sunrays.attach(3));
+    blit(target);
+}
+
+function applyBloom (source, destination) {
+    if (bloomFramebuffers.length < 2)
+        return;
+
+    let last = destination;
+
+    gl.disable(gl.BLEND);
+    bloomPrefilterProgram.bind();
+    let knee = config.BLOOM_THRESHOLD * config.BLOOM_SOFT_KNEE + 0.0001;
+    let curve0 = config.BLOOM_THRESHOLD - knee;
+    let curve1 = knee * 2;
+    let curve2 = 0.25 / knee;
+    gl.uniform3f(bloomPrefilterProgram.uniforms.curve, curve0, curve1, curve2);
+    gl.uniform1f(bloomPrefilterProgram.uniforms.threshold, config.BLOOM_THRESHOLD);
+    gl.uniform1i(bloomPrefilterProgram.uniforms.uTexture, source.attach(0));
+    blit(last);
+
+    bloomBlurProgram.bind();
+    for (let i = 0; i < bloomFramebuffers.length; i++) {
+        let dest = bloomFramebuffers[i];
+        gl.uniform2f(bloomBlurProgram.uniforms.texelSize, last.texelSizeX, last.texelSizeY);
+        gl.uniform1i(bloomBlurProgram.uniforms.uTexture, last.attach(0));
+        blit(dest);
+        last = dest;
+    }
+
+    gl.blendFunc(gl.ONE, gl.ONE);
+    gl.enable(gl.BLEND);
+
+    for (let i = bloomFramebuffers.length - 2; i >= 0; i--) {
+        let baseTex = bloomFramebuffers[i];
+        gl.uniform2f(bloomBlurProgram.uniforms.texelSize, last.texelSizeX, last.texelSizeY);
+        gl.uniform1i(bloomBlurProgram.uniforms.uTexture, last.attach(0));
+        gl.viewport(0, 0, baseTex.width, baseTex.height);
+        blit(baseTex);
+        last = baseTex;
+    }
+
+    gl.disable(gl.BLEND);
+    bloomFinalProgram.bind();
+    gl.uniform2f(bloomFinalProgram.uniforms.texelSize, last.texelSizeX, last.texelSizeY);
+    gl.uniform1i(bloomFinalProgram.uniforms.uTexture, last.attach(0));
+    gl.uniform1f(bloomFinalProgram.uniforms.intensity, config.BLOOM_INTENSITY);
+    blit(destination);
+}
+
+function applySunrays (source, mask, destination) {
+    gl.disable(gl.BLEND);
+    sunraysMaskProgram.bind();
+    gl.uniform1i(sunraysMaskProgram.uniforms.uTexture, source.attach(0));
+    blit(mask);
+
+    sunraysProgram.bind();
+    gl.uniform1f(sunraysProgram.uniforms.weight, config.SUNRAYS_WEIGHT);
+    gl.uniform1i(sunraysProgram.uniforms.uTexture, mask.attach(0));
+    blit(destination);
+}
+
+function blur (target, temp, iterations) {
+    blurProgram.bind();
+    for (let i = 0; i < iterations; i++) {
+        gl.uniform2f(blurProgram.uniforms.texelSize, target.texelSizeX, 0.0);
+        gl.uniform1i(blurProgram.uniforms.uTexture, target.attach(0));
+        blit(temp);
+
+        gl.uniform2f(blurProgram.uniforms.texelSize, 0.0, target.texelSizeY);
+        gl.uniform1i(blurProgram.uniforms.uTexture, temp.attach(0));
+        blit(target);
+    }
+}
+
+function splatPointer (pointer) {
+    let dx = pointer.deltaX * config.SPLAT_FORCE;
+    let dy = pointer.deltaY * config.SPLAT_FORCE;
+    splat(pointer.texcoordX, pointer.texcoordY, dx, dy, pointer.color);
+}
+
+function multipleSplats (amount) {
+    for (let i = 0; i < amount; i++) {
+        const color = generateColor();
+        color.r *= 10.0;
+        color.g *= 10.0;
+        color.b *= 10.0;
+        const x = Math.random();
+        const y = Math.random();
+        const dx = 1000 * (Math.random() - 0.5);
+        const dy = 1000 * (Math.random() - 0.5);
+        splat(x, y, dx, dy, color);
+    }
+}
+
+function splat (x, y, dx, dy, color) {
+    splatProgram.bind();
+    gl.uniform1i(splatProgram.uniforms.uTarget, velocity.read.attach(0));
+    gl.uniform1f(splatProgram.uniforms.aspectRatio, canvas.width / canvas.height);
+    gl.uniform2f(splatProgram.uniforms.point, x, y);
+    gl.uniform3f(splatProgram.uniforms.color, dx, dy, 0.0);
+    gl.uniform1f(splatProgram.uniforms.radius, correctRadius(config.SPLAT_RADIUS / 100.0));
+    blit(velocity.write);
+    velocity.swap();
+
+    gl.uniform1i(splatProgram.uniforms.uTarget, dye.read.attach(0));
+    gl.uniform3f(splatProgram.uniforms.color, color.r, color.g, color.b);
+    blit(dye.write);
+    dye.swap();
+}
+
+function correctRadius (radius) {
+    let aspectRatio = canvas.width / canvas.height;
+    if (aspectRatio > 1)
+        radius *= aspectRatio;
+    return radius;
+}
+
+function updatePointerDownData (pointer, id, posX, posY) {
+    pointer.id = id;
+    pointer.down = true;
+    pointer.moved = false;
+    pointer.texcoordX = posX / canvas.width;
+    pointer.texcoordY = 1.0 - posY / canvas.height;
+    pointer.prevTexcoordX = pointer.texcoordX;
+    pointer.prevTexcoordY = pointer.texcoordY;
+    pointer.deltaX = 0;
+    pointer.deltaY = 0;
+    pointer.color = generateColor();
+}
+
+function updatePointerMoveData (pointer, posX, posY) {
+    pointer.prevTexcoordX = pointer.texcoordX;
+    pointer.prevTexcoordY = pointer.texcoordY;
+    pointer.texcoordX = posX / canvas.width;
+    pointer.texcoordY = 1.0 - posY / canvas.height;
+    pointer.deltaX = correctDeltaX(pointer.texcoordX - pointer.prevTexcoordX);
+    pointer.deltaY = correctDeltaY(pointer.texcoordY - pointer.prevTexcoordY);
+    pointer.moved = Math.abs(pointer.deltaX) > 0 || Math.abs(pointer.deltaY) > 0;
+}
+
+function updatePointerUpData (pointer) {
+    pointer.down = false;
+}
+
+function correctDeltaX (delta) {
+    let aspectRatio = canvas.width / canvas.height;
+    if (aspectRatio < 1) delta *= aspectRatio;
+    return delta;
+}
+
+function correctDeltaY (delta) {
+    let aspectRatio = canvas.width / canvas.height;
+    if (aspectRatio > 1) delta /= aspectRatio;
+    return delta;
+}
+
+function generateColor () {
+    let c = HSVtoRGB(Math.random(), 1.0, 1.0);
+    c.r *= 0.15;
+    c.g *= 0.15;
+    c.b *= 0.15;
+    return c;
+}
+
+function HSVtoRGB (h, s, v) {
+    let r, g, b, i, f, p, q, t;
+    i = Math.floor(h * 6);
+    f = h * 6 - i;
+    p = v * (1 - s);
+    q = v * (1 - f * s);
+    t = v * (1 - (1 - f) * s);
+
+    switch (i % 6) {
+        case 0: r = v, g = t, b = p; break;
+        case 1: r = q, g = v, b = p; break;
+        case 2: r = p, g = v, b = t; break;
+        case 3: r = p, g = q, b = v; break;
+        case 4: r = t, g = p, b = v; break;
+        case 5: r = v, g = p, b = q; break;
+    }
+
+    return {
+        r,
+        g,
+        b
+    };
+}
+
+function normalizeColor (input) {
+    let output = {
+        r: input.r / 255,
+        g: input.g / 255,
+        b: input.b / 255
+    };
+    return output;
+}
+
+function wrap (value, min, max) {
+    let range = max - min;
+    if (range == 0) return min;
+    return (value - min) % range + min;
+}
+
+function getResolution (resolution) {
+    let aspectRatio = gl.drawingBufferWidth / gl.drawingBufferHeight;
+    if (aspectRatio < 1)
+        aspectRatio = 1.0 / aspectRatio;
+
+    let min = Math.round(resolution);
+    let max = Math.round(resolution * aspectRatio);
+
+    if (gl.drawingBufferWidth > gl.drawingBufferHeight)
+        return { width: max, height: min };
+    else
+        return { width: min, height: max };
+}
+
+function getTextureScale (texture, width, height) {
+    return {
+        x: width / texture.width,
+        y: height / texture.height
+    };
+}
+
+function scaleByPixelRatio (input) {
+    let pixelRatio = window.devicePixelRatio || 1;
+    return Math.floor(input * pixelRatio);
+}
+
+function hashCode (s) {
+    if (s.length == 0) return 0;
+    let hash = 0;
+    for (let i = 0; i < s.length; i++) {
+        hash = (hash << 5) - hash + s.charCodeAt(i);
+        hash |= 0;
+    }
+    return hash;
+}
+// 暴露给模态框控制面板
+window.fluidConfig = config;
+window.splatStack = splatStack;
+window.initFramebuffers = initFramebuffers;
+window.updateKeywords = updateKeywords;
+})();
+  </script>
+</body>
+</html>

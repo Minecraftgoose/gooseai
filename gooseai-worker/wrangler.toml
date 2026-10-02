@@ -1,0 +1,16 @@
+name = "gooseai-api"
+main = "src/index.js"
+compatibility_date = "2025-07-01"
+
+# 非敏感配置：上游地址不是密钥，可提交
+[vars]
+CHAT_URL  = "https://platform.aitools.cfd/api/v1/chat/completions"
+BEAST_URL = "https://new.xinjianya.top/v1/chat/completions"
+GLM_URL   = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
+AGNES_URL = "https://apihub.agnes-ai.com"
+
+# 三个密钥请用以下命令写入（不要提交到仓库 / 不要写进 wrangler.toml）：
+#   cd worker && wrangler secret put CHAT_KEY
+#   cd worker && wrangler secret put BEAST_KEY
+#   cd worker && wrangler secret put GLM_KEY
+#   cd worker && wrangler secret put AGNES_KEY
